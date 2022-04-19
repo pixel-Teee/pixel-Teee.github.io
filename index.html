@@ -71,6 +71,102 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-Slate" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2022/04/19/Slate/" class="article-date">
+  <time class="dt-published" datetime="2022-04-19T04:49:18.170Z" itemprop="datePublished">2022-04-19</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>UMG和Slate的关系，是UMG是对Slate的包装，UWidget持有SWidget的指针，</p>
+<p>UWidget加入了UObject的GC系统，<strong>支持反射和蓝图功能。</strong></p>
+<p>本身不包含控件逻辑。</p>
+<h1 id="FSlateApplication-Create"><a href="#FSlateApplication-Create" class="headerlink" title="FSlateApplication::Create"></a>FSlateApplication::Create</h1><p>Slate在<strong>FEngineLoop::PreInitPreStartupScreen</strong>里面进行初始化的。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//创建这个</span></span><br><span class="line">FSlateApplication::<span class="built_in">Create</span>();</span><br><span class="line"><span class="comment">//在RHI初始化后，给FSlateApplication用</span></span><br><span class="line">FSlateApplication&amp; CurrentSlateApp = FSlateApplication::<span class="built_in">Get</span>();</span><br><span class="line">CurrentSlateApp.<span class="built_in">InitializeRenderer</span>(SlateRendererSharedRef);</span><br></pre></td></tr></table></figure>
+
+<img src="/2022/04/19/Slate/Slate.png" class title="image-20220419125903593">
+
+<p>FSlateApplication::Create是在SlateApplication.cpp里面的。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">FSlateApplication::Create</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	GSlateFastWidgetPath = GIsEditor ? <span class="literal">false</span> : <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//------这里接受了一个TSharedRef&lt;class GenericApplication&gt;对象------</span></span><br><span class="line">	<span class="built_in">Create</span>(<span class="built_in">MakeShareable</span>(FPlatformApplicationMisc::<span class="built_in">CreateApplication</span>()));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">TSharedRef&lt;FSlateApplication&gt; <span class="title">FSlateApplication::Create</span><span class="params">(<span class="keyword">const</span> TSharedRef&lt;class GenericApplication&gt;&amp; InPlatformApplication)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	EKeys::<span class="built_in">Initialize</span>();</span><br><span class="line"></span><br><span class="line">	FCoreStyle::<span class="built_in">ResetToDefault</span>();</span><br><span class="line"></span><br><span class="line">	<span class="comment">//获取到平台相关的Application</span></span><br><span class="line">	PlatformApplication = InPlatformApplication;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//然后创建一个FSlateApplication</span></span><br><span class="line">	CurrentApplication = <span class="built_in">MakeShareable</span>( <span class="keyword">new</span> <span class="built_in">FSlateApplication</span>() );</span><br><span class="line">	CurrentBaseApplication = CurrentApplication;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//设置消息处理</span></span><br><span class="line">	PlatformApplication-&gt;<span class="built_in">SetMessageHandler</span>( CurrentApplication.<span class="built_in">ToSharedRef</span>() );</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> WITH_ACCESSIBILITY</span></span><br><span class="line">	PlatformApplication-&gt;<span class="built_in">SetAccessibleMessageHandler</span>(CurrentApplication-&gt;<span class="built_in">GetAccessibleMessageHandler</span>());</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">	<span class="comment">// The grid needs to know the size and coordinate system of the desktop.</span></span><br><span class="line">	<span class="comment">// Some monitor setups have a primary monitor on the right and below the</span></span><br><span class="line">	<span class="comment">// left one, so the leftmost upper right monitor can be something like (-1280, -200)Synt</span></span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">//获取虚拟桌面的几何</span></span><br><span class="line">		CurrentApplication-&gt;VirtualDesktopRect = []()</span><br><span class="line">		&#123;</span><br><span class="line">			FDisplayMetrics DisplayMetrics;</span><br><span class="line">            <span class="comment">//这里获取了尺寸</span></span><br><span class="line">			FSlateApplicationBase::<span class="built_in">Get</span>().<span class="built_in">GetDisplayMetrics</span>(DisplayMetrics);</span><br><span class="line">			<span class="keyword">const</span> FPlatformRect&amp; VirtualDisplayRect = DisplayMetrics.VirtualDisplayRect;</span><br><span class="line">			<span class="keyword">return</span> <span class="built_in">FSlateRect</span>(VirtualDisplayRect.Left, VirtualDisplayRect.Top, VirtualDisplayRect.Right, VirtualDisplayRect.Bottom);</span><br><span class="line">		&#125;();</span><br><span class="line">		<span class="comment">//从OS注册更新</span></span><br><span class="line">		<span class="comment">//当平台Application更新尺寸的时候，就调用SlateApplication的OnVirtualDesktopSizeChanged</span></span><br><span class="line">		PlatformApplication-&gt;<span class="built_in">OnDisplayMetricsChanged</span>().<span class="built_in">AddSP</span>(CurrentApplication.<span class="built_in">ToSharedRef</span>(), &amp;FSlateApplication::OnVirtualDesktopSizeChanged);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	FAsyncTaskNotificationFactory::<span class="built_in">Get</span>().<span class="built_in">RegisterFactory</span>(<span class="built_in">TEXT</span>(<span class="string">&quot;Slate&quot;</span>), []() -&gt; FAsyncTaskNotificationFactory::FImplPointerType &#123; <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">FSlateAsyncTaskNotificationImpl</span>(); &#125;);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> CurrentApplication.<span class="built_in">ToSharedRef</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>这个Create里面，主要把平台相关的Application的消息改变、大小改变，<strong>传递给SlateApplication。</strong></p>
+<p>FEngineLoop::Tick会调用FSlateApplication的Tick，<strong>Tick调用PumpMessages等函数。</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//------消息在这里派发------</span></span><br><span class="line"><span class="comment">//------windows的DispatchMessage就在这里------</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">FSlateApplication::PumpMessages</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	PlatformApplication-&gt;<span class="built_in">PumpMessages</span>( <span class="built_in">GetDeltaTime</span>() );</span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure>
+
+<p>&#x2F;&#x2F;Pump：输送</p>
+<h2 id="FPlatformApplicationMisc-CreateApplication"><a href="#FPlatformApplicationMisc-CreateApplication" class="headerlink" title="FPlatformApplicationMisc::CreateApplication()"></a>FPlatformApplicationMisc::CreateApplication()</h2><img src="/2022/04/19/Slate/ApplicationCore.png" class title="image-20220419130241636">
+
+<p>然后，这个函数又是这个模块下的文件，<strong>平台相关的</strong>。</p>
+<p><strong>WindowsApplication.cpp里面有键盘消息处理的模块。</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">GenericApplication* <span class="title">FWindowsPlatformApplicationMisc::CreateApplication</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//这里加载了一个UE4的ICON</span></span><br><span class="line">	HICON AppIconHandle = <span class="built_in">LoadIcon</span>( hInstance, <span class="built_in">MAKEINTRESOURCE</span>( <span class="built_in">GetAppIcon</span>() ) );</span><br><span class="line">	<span class="keyword">if</span>( AppIconHandle == <span class="literal">NULL</span> )</span><br><span class="line">	&#123;</span><br><span class="line">		AppIconHandle = <span class="built_in">LoadIcon</span>( (HINSTANCE)<span class="literal">NULL</span>, IDI_APPLICATION ); </span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//传入一个Windows的程序实例句柄和ICON句柄，然后创建GenericApplication*</span></span><br><span class="line">	<span class="keyword">return</span> FWindowsApplication::<span class="built_in">CreateWindowsApplication</span>( hInstance, AppIconHandle );</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">FWindowsApplication* <span class="title">FWindowsApplication::CreateWindowsApplication</span><span class="params">( <span class="keyword">const</span> HINSTANCE InstanceHandle, <span class="keyword">const</span> HICON IconHandle )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//创建一个FWindowsApplication，这里是平台相关</span></span><br><span class="line">    <span class="comment">//这里创建窗口的</span></span><br><span class="line">	WindowsApplication = <span class="keyword">new</span> <span class="built_in">FWindowsApplication</span>( InstanceHandle, IconHandle );</span><br><span class="line">	<span class="keyword">return</span> WindowsApplication;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>这个FWindowsApplication继承自GenericApplication，<strong>所有平台相关的Application都从这个抽象基类继承。</strong></p>
+<h2 id="FSlateApplication-Tick"><a href="#FSlateApplication-Tick" class="headerlink" title="FSlateApplication::Tick"></a>FSlateApplication::Tick</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//调用这个，进行UI的绘制</span></span><br><span class="line"><span class="built_in">TickAndDrawWidgets</span>(DeltaTime);</span><br></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">FSlateApplication::TickAndDrawWidgets</span><span class="params">(<span class="keyword">float</span> DeltaTime)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">//...</span></span><br><span class="line">	</span><br><span class="line">	<span class="comment">//...</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">//Draw all windows</span></span><br><span class="line">    <span class="built_in">DrawWindows</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">FSlateApplication::DrawWindows</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="built_in">SCOPED_NAMED_EVENT_TEXT</span>(<span class="string">&quot;Slate::DrawWindows&quot;</span>, FColor::Magenta);</span><br><span class="line">	<span class="built_in">PrivateDrawWindows</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">FSlateApplication::PrivateDrawWindows</span><span class="params">( TSharedPtr&lt;SWindow&gt; DrawOnlyThisWindow )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">//Prepass the window</span></span><br><span class="line">    <span class="built_in">DrawPrepass</span>(DrawOnlyThisWindow);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//绘制窗口和子窗口</span></span><br><span class="line">    <span class="built_in">DrawWindowAndChildren</span>( ActiveModalWindow.<span class="built_in">ToSharedRef</span>(), DrawWindowArgs );</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//调用了Slate渲染器的DrawWindows函数</span></span><br><span class="line">    Renderer-&gt;<span class="built_in">DrawWindows</span>( DrawWindowArgs.OutDrawBuffer );</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>这里用了Slate的渲染器，来绘制UI。</p>
+<img src="/2022/04/19/Slate/SlateRenderer.png" class title="image-20220419142254716">
+
+<p>可以是D3D或者OpenGL的<strong>渲染器</strong>。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">FSlateApplication::DrawWindowAndChildren</span><span class="params">( <span class="keyword">const</span> TSharedRef&lt;SWindow&gt;&amp; WindowToDraw, FDrawWindowArgs&amp; DrawWindowArgs )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">//------调用了SWindow的PaintWindow------</span></span><br><span class="line">	WindowToDraw-&gt;<span class="built_in">PaintWindow</span>(</span><br><span class="line">					<span class="built_in">GetCurrentTime</span>(),</span><br><span class="line">					<span class="built_in">GetDeltaTime</span>(),</span><br><span class="line">					WindowElementList,</span><br><span class="line">					<span class="built_in">FWidgetStyle</span>(),</span><br><span class="line">					WindowToDraw-&gt;<span class="built_in">IsEnabled</span>())</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//PaintWindow继续调用FSlateInvalidationRoot::PaintInvalidationRoot</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//FSlateInvalidationRoot::PaintInvalidationRoot调用PaintSlowPath</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//PaintSlowPath调用SWidget::Paint</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//调用各种Widget的OnPaint</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//各种FSlateDrawElement的MakeBox</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h1 id="FSlateD3DRenderer-DrawWindows"><a href="#FSlateD3DRenderer-DrawWindows" class="headerlink" title="FSlateD3DRenderer::DrawWindows"></a>FSlateD3DRenderer::DrawWindows</h1><p>看一下渲染器做了啥。</p>
+<p>StandaloneRenderer里面只有OpenGL和D3D类型的渲染器。</p>
+<p>FSlateDrawBuffer里面有一堆之前根据Slate的逻辑生成的<strong>顶点缓冲区之类的东西。</strong></p>
+<p>主要在这里生成渲染指令的，<strong>然后提交给渲染线程进行绘制。</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">FSlateD3DRenderer::DrawWindows</span><span class="params">(FSlateDrawBuffer&amp; InWindowDrawBuffer)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//...</span></span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>参考资料：<a target="_blank" rel="noopener" href="https://blog.uwa4d.com/archives/USparkle_UESlate.html">https://blog.uwa4d.com/archives/USparkle_UESlate.html</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2022/04/19/Slate/" data-id="cl25s8p6600006gsz1i2yg75h" data-title="" class="article-share-link">Share</a>
+      
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
     <article id="post-UE4引擎启动流程" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2022/01/05/UE4%E5%BC%95%E6%93%8E%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/" class="article-date">
@@ -402,7 +498,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/01/">January 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/12/">December 2021</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/04/">April 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/01/">January 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/12/">December 2021</a></li></ul>
     </div>
   </div>
 
@@ -413,6 +509,10 @@
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2022/04/19/Slate/">(no title)</a>
+          </li>
         
           <li>
             <a href="/2022/01/05/UE4%E5%BC%95%E6%93%8E%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">(no title)</a>
